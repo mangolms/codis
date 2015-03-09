@@ -61,7 +61,8 @@ func (top *Topology) GetSlotByIndex(i int) (*models.Slot, *models.ServerGroup, e
 func NewTopo(ProductName string, zkAddr string, f ZkFactory) *Topology {
 	t := &Topology{zkAddr: zkAddr, ProductName: ProductName, fact: f}
 	if t.fact == nil {
-		t.fact = zkhelper.ConnectToZk
+		//t.fact = zkhelper.ConnectToZk
+		t.fact = zkhelper.NewEtcdConn
 	}
 	t.InitZkConn()
 	return t
@@ -134,7 +135,7 @@ func (top *Topology) DoResponse(seq int, pi *models.ProxyInfo) error {
 	}
 
 	_, err = top.zkConn.Create(path.Join(actionPath, pi.Id), data,
-		0, zkhelper.DefaultACLs())
+		0, zkhelper.DefaultFileACLs())
 
 	return err
 }

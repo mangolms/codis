@@ -57,5 +57,6 @@ func (e *CodisEnv) DashboardAddr() string {
 }
 
 func (e *CodisEnv) NewZkConn() (zkhelper.Conn, error) {
-	return zkhelper.ConnectToZk(e.zkAddr)
+	//return zkhelper.ConnectToZk(e.zkAddr)
+	return zkhelper.NewEtcdConn(e.zkAddr)
 }
