@@ -469,7 +469,7 @@ func apiSetProxyStatus(proxy models.ProxyInfo, param martini.Params) (int, strin
 		if proxy.State == models.PROXY_STATE_MARK_OFFLINE && zkhelper.ZkErrorEqual(err, zk.ErrNoNode) {
 			return jsonRetSucc()
 		}
-		log.Warning(err)
+		log.Warning(errors.ErrorStack(err))
 		return 500, err.Error()
 	}
 	return jsonRetSucc()

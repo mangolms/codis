@@ -140,7 +140,8 @@ func GetActionSeqList(zkConn zkhelper.Conn, productName string) ([]int, error) {
 func ExtraSeqList(nodes []string) ([]int, error) {
 	var seqs []int
 	for _, nodeName := range nodes {
-		seq, err := strconv.Atoi(strings.Split(nodeName, "_")[1])
+		slice := strings.Split(nodeName, "_")
+		seq, err := strconv.Atoi(slice[len(slice)-1])
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
