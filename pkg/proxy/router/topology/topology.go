@@ -29,6 +29,7 @@ type Topology struct {
 	zkAddr      string
 	zkConn      zkhelper.Conn
 	fact        ZkFactory
+	provider    string
 }
 
 func (top *Topology) GetGroup(groupId int) (*models.ServerGroup, error) {
@@ -105,7 +106,12 @@ func (top *Topology) GetProxyInfo(proxyName string) (*models.ProxyInfo, error) {
 }
 
 func (top *Topology) GetActionResponsePath(seq int) string {
-	return path.Join(models.GetWatchActionPath(top.ProductName), "action_"+fmt.Sprintf("%0.10d", seq))
+	if top.provider == "etcd" {
+		return path.Join(models.GetActionResponsePath(top.ProductName), fmt.Sprintf("%d", seq))
+	}
+
+	//zookeeper
+	return path.Join(models.GetActionResponsePath(top.ProductName), "seq_"+fmt.Sprintf("%0.10d", seq))
 }
 
 func (top *Topology) SetProxyStatus(proxyName string, status string) error {
@@ -143,7 +149,7 @@ func (top *Topology) DoResponse(seq int, pi *models.ProxyInfo) error {
 func (top *Topology) doWatch(evtch <-chan topo.Event, evtbus chan interface{}) {
 	e := <-evtch
 	log.Infof("topo event %+v", e)
-	if e.State == topo.StateExpired {
+	if e.State == topo.StateExpired || e.Type == topo.EventNotWatching {
 		log.Fatalf("session expired: %+v", e)
 	}
 
