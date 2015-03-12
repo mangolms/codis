@@ -60,7 +60,7 @@ func (top *Topology) GetSlotByIndex(i int) (*models.Slot, *models.ServerGroup, e
 }
 
 func NewTopo(ProductName string, zkAddr string, f ZkFactory) *Topology {
-	t := &Topology{zkAddr: zkAddr, ProductName: ProductName, fact: f}
+	t := &Topology{zkAddr: zkAddr, ProductName: ProductName, fact: f, provider: "etcd"}
 	if t.fact == nil {
 		//t.fact = zkhelper.ConnectToZk
 		t.fact = zkhelper.NewEtcdConn
@@ -147,22 +147,24 @@ func (top *Topology) DoResponse(seq int, pi *models.ProxyInfo) error {
 }
 
 func (top *Topology) doWatch(evtch <-chan topo.Event, evtbus chan interface{}) {
-	e := <-evtch
-	log.Infof("topo event %+v", e)
-	if e.State == topo.StateExpired || e.Type == topo.EventNotWatching {
-		log.Fatalf("session expired: %+v", e)
-	}
+	for {
+		e := <-evtch
+		log.Infof("topo event %+v", e)
+		if e.State == topo.StateExpired || e.Type == topo.EventNotWatching {
+			log.Fatalf("session expired: %+v", e)
+		}
 
-	switch e.Type {
-	//case topo.EventNodeCreated:
-	//case topo.EventNodeDataChanged:
-	case topo.EventNodeChildrenChanged: //only care children changed
-		//todo:get changed node and decode event
-	default:
-		log.Warningf("%+v", e)
-	}
+		switch e.Type {
+		//case topo.EventNodeCreated:
+		//case topo.EventNodeDataChanged:
+		case topo.EventNodeChildrenChanged: //only care children changed
+			//todo:get changed node and decode event
+		default:
+			log.Warningf("%+v", e)
+		}
 
-	evtbus <- e
+		evtbus <- e
+	}
 }
 
 func (top *Topology) WatchChildren(path string, evtbus chan interface{}) ([]string, error) {
@@ -173,6 +175,11 @@ func (top *Topology) WatchChildren(path string, evtbus chan interface{}) ([]stri
 
 	go top.doWatch(evtch, evtbus)
 	return content, nil
+}
+
+func (top *Topology) Children(path string) ([]string, error) {
+	children, _, err := top.zkConn.Children(path)
+	return children, err
 }
 
 func (top *Topology) WatchNode(path string, evtbus chan interface{}) ([]byte, error) {

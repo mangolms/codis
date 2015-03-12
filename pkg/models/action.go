@@ -10,7 +10,6 @@ import (
 	"path"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ngaut/zkhelper"
@@ -55,7 +54,7 @@ func GetActionResponsePath(productName string) string {
 
 func GetActionWithSeq(zkConn zkhelper.Conn, productName string, seq int64) (*Action, error) {
 	var act Action
-	data, _, err := zkConn.Get(path.Join(GetWatchActionPath(productName), "action_"+fmt.Sprintf("%0.10d", seq)))
+	data, _, err := zkConn.Get(path.Join(GetWatchActionPath(productName), fmt.Sprintf("%d", seq)))
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -68,7 +67,7 @@ func GetActionWithSeq(zkConn zkhelper.Conn, productName string, seq int64) (*Act
 }
 
 func GetActionObject(zkConn zkhelper.Conn, productName string, seq int64, act interface{}) error {
-	data, _, err := zkConn.Get(path.Join(GetWatchActionPath(productName), "action_"+fmt.Sprintf("%0.10d", seq)))
+	data, _, err := zkConn.Get(path.Join(GetWatchActionPath(productName), fmt.Sprintf("%d", seq)))
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -144,8 +143,7 @@ func GetActionSeqList(zkConn zkhelper.Conn, productName string) ([]int, error) {
 func ExtraSeqList(nodes []string) ([]int, error) {
 	var seqs []int
 	for _, nodeName := range nodes {
-		slice := strings.Split(nodeName, "_")
-		seq, err := strconv.Atoi(slice[len(slice)-1])
+		seq, err := strconv.Atoi(nodeName)
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
@@ -284,8 +282,17 @@ func NewAction(zkConn zkhelper.Conn, productName string, actionType ActionType, 
 		return errors.Trace(err)
 	}
 
-	//create response node
-	actionRespPath, err := zkConn.Create(respPath+"/seq_", b, int32(zk.FlagSequence), zkhelper.DefaultDirACLs())
+	//create response node, etcd do not support create in order directory
+	//get path first
+	actionRespPath, err := zkConn.Create(respPath+"/", b, int32(zk.FlagSequence), zkhelper.DefaultFileACLs())
+	if err != nil {
+		log.Error(err, respPath)
+		return errors.Trace(err)
+	}
+
+	//remove file then create directory
+	zkConn.Delete(actionRespPath, -1)
+	actionRespPath, err = zkConn.Create(actionRespPath, b, 0, zkhelper.DefaultDirACLs())
 	if err != nil {
 		log.Error(err, respPath)
 		return errors.Trace(err)

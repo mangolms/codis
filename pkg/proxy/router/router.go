@@ -399,6 +399,7 @@ func (s *Server) checkAndDoTopoChange(seq int) (needResponse bool) {
 		log.Fatal(errors.ErrorStack(err), "action seq", seq)
 	}
 
+	log.Warningf("action %v receivers %v", seq, act.Receivers)
 	if !StringsContain(act.Receivers, s.pi.Id) { //no need to response
 		return false
 	}
@@ -460,8 +461,7 @@ func (s *Server) processAction(e interface{}) {
 		return
 	}
 
-	//re-watch
-	nodes, err := s.top.WatchChildren(models.GetWatchActionPath(s.top.ProductName), s.evtbus)
+	nodes, err := s.top.Children(models.GetWatchActionPath(s.top.ProductName))
 	if err != nil {
 		log.Fatal(errors.ErrorStack(err))
 	}
@@ -485,17 +485,7 @@ func (s *Server) processAction(e interface{}) {
 	}
 
 	if index < 0 {
-		log.Warningf("zookeeper restarted or actions were deleted ? lastActionSeq: %d", s.lastActionSeq)
-		if s.lastActionSeq > seqs[len(seqs)-1] {
-			log.Fatalf("unknown error, zookeeper restarted or actions were deleted ? lastActionSeq: %d, %v", s.lastActionSeq, nodes)
-		}
-
-		if s.lastActionSeq == seqs[len(seqs)-1] { //children change or delete event
-			return
-		}
-
-		//actions node was remove by someone, seems we can handle it
-		index = 0
+		return
 	}
 
 	actions := seqs[index:]
@@ -551,7 +541,7 @@ func (s *Server) handleTopoEvent() {
 
 			s.dispatch(r)
 		case e := <-s.evtbus:
-			log.Infof("got event %s, %v", s.pi.Id, e)
+			log.Infof("got event %s, %v, lastActionSeq %d", s.pi.Id, e, s.lastActionSeq)
 			switch e.(type) {
 			case *killEvent:
 				s.handleMarkOffline()

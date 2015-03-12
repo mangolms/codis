@@ -30,13 +30,13 @@ func TestNewAction(t *testing.T) {
 	}
 
 	//test if response node exists
-	d, _, err := fakeZkConn.Get(prefix + "/seq_0000000001")
+	d, _, err := fakeZkConn.Get(prefix + "/0000000001")
 	if err != nil {
 		t.Error(errors.ErrorStack(err))
 	}
 
 	//test get action data
-	d, _, err = fakeZkConn.Get(GetActionResponsePath(productName) + "/seq_0000000001")
+	d, _, err = fakeZkConn.Get(GetActionResponsePath(productName) + "/0000000001")
 	if err != nil {
 		t.Error(errors.ErrorStack(err))
 	}
